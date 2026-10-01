@@ -21,6 +21,17 @@
         "android.permission.ACCESS_WIFI_STATE",
         "android.permission.CHANGE_WIFI_MULTICAST_STATE"
       ]
-    }
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#1b5e20",
+          "dark": {
+            "backgroundColor": "#0d3311"
+          }
+        }
+      ]
+    ]
   }
 }
