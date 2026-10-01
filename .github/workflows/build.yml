@@ -28,12 +28,12 @@ jobs:
         run: npm ci
 
       - name: 构建 APK
-        run: cd android && ./gradlew assembleDebug --no-daemon
+        run: cd android && ./gradlew assembleRelease --no-daemon
 
       - uses: actions/upload-artifact@v4
         with:
           name: hongzhongbao-android-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: android/app/build/outputs/apk/release/*.apk
 
   # ---------- iOS：免签名模拟器包（验证编译） ----------
   ios-simulator:
