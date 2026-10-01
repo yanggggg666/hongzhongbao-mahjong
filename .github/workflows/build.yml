@@ -78,7 +78,7 @@ jobs:
   ios-device:
     name: 构建 iOS IPA（真机）
     runs-on: macos-14
-    if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    if: ${{ secrets.APPLE_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v4
 
