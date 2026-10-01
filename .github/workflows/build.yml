@@ -1,0 +1,150 @@
+name: 构建 Android / iOS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  # ---------- Android：Debug 签名 APK（可直接安装测试） ----------
+  android:
+    name: 构建 Android APK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 生成 Android 原生工程
+        run: npx expo prebuild --platform android --no-install
+
+      - name: 安装依赖（含原生模块）
+        run: npm ci
+
+      - name: 构建 APK
+        run: cd android && ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hongzhongbao-android-apk
+          path: android/app/build/outputs/apk/debug/*.apk
+
+  # ---------- iOS：免签名模拟器包（验证编译） ----------
+  ios-simulator:
+    name: 构建 iOS（模拟器，免签名）
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 生成 iOS 原生工程
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: 安装依赖（含原生模块）
+        run: npm ci
+
+      - name: 安装 Pods
+        run: cd ios && pod install
+
+      - name: 构建模拟器包
+        run: |
+          xcodebuild \
+            -workspace ios/hongzhongbao-mahjong.xcworkspace \
+            -scheme hongzhongbao-mahjong \
+            -configuration Release \
+            -sdk iphonesimulator \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hongzhongbao-ios-simulator
+          path: build/Build/Products/Release-iphonesimulator/*.app
+
+  # ---------- iOS：真机 IPA（需要配置签名密钥后自动启用） ----------
+  ios-device:
+    name: 构建 iOS IPA（真机）
+    runs-on: macos-14
+    if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: 安装依赖
+        run: npm ci
+
+      - name: 生成 iOS 原生工程
+        run: npx expo prebuild --platform ios --no-install
+
+      - name: 安装依赖（含原生模块）
+        run: npm ci
+
+      - name: 导入签名证书
+        uses: apple-actions/import-codesign-certs@v2
+        with:
+          p12-file-base64: ${{ secrets.APPLE_CERTIFICATE }}
+          p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: 安装描述文件
+        uses: apple-actions/download-provisioning-profiles@v1
+        with:
+          bundle-id: com.hongzhongbao.mahjong
+          profile-type: IOS_APP_STORE
+          issuer-id: ${{ secrets.APPLE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPLE_KEY_ID }}
+          api-private-key: ${{ secrets.APPLE_PRIVATE_KEY }}
+
+      - name: 安装 Pods
+        run: cd ios && pod install
+
+      - name: 生成 exportOptions.plist
+        run: |
+          cat > exportOptions.plist <<'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+          </dict>
+          </plist>
+          EOF
+
+      - name: 构建 IPA
+        run: |
+          xcodebuild \
+            -workspace ios/hongzhongbao-mahjong.xcworkspace \
+            -scheme hongzhongbao-mahjong \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath build/App.xcarchive \
+            archive
+          xcodebuild \
+            -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist exportOptions.plist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hongzhongbao-ios-ipa
+          path: build/ipa/*.ipa

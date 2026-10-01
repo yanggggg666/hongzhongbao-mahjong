@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "红中宝麻将",
+    "slug": "hongzhongbao-mahjong",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "ios": {
+      "bundleIdentifier": "com.hongzhongbao.mahjong",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "用于在局域网内发现好友并联机游戏",
+        "NSBonjourServices": ["_hongzhongbao._tcp"]
+      }
+    },
+    "android": {
+      "package": "com.hongzhongbao.mahjong",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.ACCESS_WIFI_STATE",
+        "android.permission.CHANGE_WIFI_MULTICAST_STATE"
+      ]
+    }
+  }
+}

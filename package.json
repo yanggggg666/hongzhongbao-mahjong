@@ -1,0 +1,24 @@
+{
+  "name": "hongzhongbao-mahjong",
+  "version": "1.0.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc scripts/test-engine.ts src/game/*.ts --outDir node_modules/.cache/test --module commonjs --target es2020 --strict --esModuleInterop --skipLibCheck && node node_modules/.cache/test/scripts/test-engine.js"
+  },
+  "dependencies": {
+    "expo": "~51.0.21",
+    "react": "18.2.0",
+    "react-native": "0.74.5",
+    "react-native-tcp-socket": "^6.0.6",
+    "react-native-udp": "^4.1.7"
+  },
+  "devDependencies": {
+    "@types/react": "~18.2.79",
+    "typescript": "~5.3.3"
+  }
+}
