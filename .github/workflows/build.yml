@@ -74,11 +74,11 @@ jobs:
           name: hongzhongbao-ios-simulator
           path: build/Build/Products/Release-iphonesimulator/*.app
 
-  # ---------- iOS：真机 IPA（需要配置签名密钥后自动启用） ----------
+  # ---------- iOS：真机 IPA（需要配置签名密钥；未配置时自动跳过失败，不影响其他任务） ----------
   ios-device:
     name: 构建 iOS IPA（真机）
     runs-on: macos-14
-    if: ${{ secrets.APPLE_CERTIFICATE }}
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
