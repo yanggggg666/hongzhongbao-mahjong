@@ -84,8 +84,10 @@ export default function HomeScreen({ onRoom }: Props) {
 
   return (
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <Text style={s.title}>红中宝麻将</Text>
-      <Text style={s.subtitle}>局域网 / 互联网联机 · 1-4 人 · 可加电脑</Text>
+      <View style={s.header}>
+        <Text style={s.title}>红中宝麻将</Text>
+        <Text style={s.subtitle}>局域网 / 互联网联机 · 1-4 人 · 可加电脑</Text>
+      </View>
 
       <TextInput
         style={s.input}
@@ -95,13 +97,11 @@ export default function HomeScreen({ onRoom }: Props) {
         maxLength={12}
       />
 
-      <View style={s.row}>
+      <View style={s.btnGroup}>
         <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createRoom}>
           <Text style={s.btnText}>创建房间（局域网）</Text>
         </TouchableOpacity>
-      </View>
 
-      <View style={s.row}>
         <TouchableOpacity
           style={[s.btn, s.btnSecondary]}
           onPress={() => {
@@ -111,9 +111,7 @@ export default function HomeScreen({ onRoom }: Props) {
         >
           <Text style={s.btnText}>加入房间（局域网）</Text>
         </TouchableOpacity>
-      </View>
 
-      <View style={s.row}>
         <TouchableOpacity
           style={[s.btn, s.btnInternet]}
           onPress={() => setTab(tab === 'internet' ? 'none' : 'internet')}
@@ -195,9 +193,10 @@ export default function HomeScreen({ onRoom }: Props) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, padding: 24, justifyContent: 'center', backgroundColor: '#f5f5f0' },
-  title: { fontSize: 34, fontWeight: 'bold', textAlign: 'center', color: '#b71c1c', marginBottom: 4 },
-  subtitle: { fontSize: 14, textAlign: 'center', color: '#666', marginBottom: 28 },
+  container: { flex: 1, padding: 24, backgroundColor: '#f5f5f0' },
+  header: { alignItems: 'center', marginBottom: 28 },
+  title: { fontSize: 36, fontWeight: 'bold', color: '#b71c1c', marginBottom: 4 },
+  subtitle: { fontSize: 14, color: '#666' },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
@@ -207,8 +206,9 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     marginBottom: 12,
   },
+  btnGroup: { gap: 10 },
   row: { flexDirection: 'row', marginBottom: 12 },
-  btn: { flex: 1, borderRadius: 8, padding: 14, alignItems: 'center' },
+  btn: { borderRadius: 8, padding: 14, alignItems: 'center' },
   btnPrimary: { backgroundColor: '#b71c1c' },
   btnSecondary: { backgroundColor: '#2e7d32' },
   btnInternet: { backgroundColor: '#1565c0' },
