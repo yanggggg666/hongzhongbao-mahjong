@@ -47,7 +47,7 @@ export default function HomeScreen({ onRoom }: Props) {
       await client.join(ip.trim());
       onRoom(client);
     } catch (e) {
-      setError('无法连接到该主机，请确认 IP 与网络');
+      setError('无法连接到该主机，请确认网络');
     }
   };
 
@@ -90,15 +90,22 @@ export default function HomeScreen({ onRoom }: Props) {
 
       {tab === 'join' && (
         <View style={s.discovery}>
-          <Text style={s.sectionTitle}>发现的主机：</Text>
-          {hosts.length === 0 && <Text style={s.hint}>正在搜索局域网内的主机…</Text>}
+          <Text style={s.sectionTitle}>发现的房间：</Text>
+          {hosts.length === 0 && <Text style={s.hint}>正在搜索局域网内的房间…</Text>}
           <FlatList
             data={hosts}
             keyExtractor={(h) => h.ip}
             renderItem={({ item }) => (
               <TouchableOpacity style={s.hostItem} onPress={() => join(item.ip)}>
-                <Text style={s.hostName}>{item.name}</Text>
-                <Text style={s.hostIp}>{item.ip}</Text>
+                <View style={s.hostInfo}>
+                  <Text style={s.hostName}>{item.name} 的房间</Text>
+                  {item.roomCode ? (
+                    <Text style={s.roomCode}>房间号：{item.roomCode}</Text>
+                  ) : (
+                    <Text style={s.hostIp}>{item.ip}</Text>
+                  )}
+                </View>
+                <Text style={s.joinBtn}>加入</Text>
               </TouchableOpacity>
             )}
           />
@@ -146,6 +153,7 @@ const s = StyleSheet.create({
   hostItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#fff',
     padding: 12,
     borderRadius: 8,
@@ -153,7 +161,10 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ddd',
   },
+  hostInfo: { flex: 1 },
   hostName: { fontSize: 15, fontWeight: 'bold' },
-  hostIp: { color: '#777' },
+  roomCode: { fontSize: 13, color: '#b71c1c', fontWeight: 'bold', marginTop: 2 },
+  hostIp: { fontSize: 12, color: '#777', marginTop: 2 },
+  joinBtn: { color: '#2e7d32', fontSize: 15, fontWeight: 'bold', marginLeft: 8 },
   error: { color: '#d32f2f', marginTop: 12, textAlign: 'center' },
 });
