@@ -62,6 +62,8 @@ export class GameRoom {
   private server: any = null;
   private udp: any = null;
   private clientSocket: any = null;
+  private ws: WebSocket | null = null;
+  private serverUrl = '';
   private clients: ClientConn[] = [];
   private lobbyPlayers: { id: number; name: string; isAI: boolean }[] = [];
   private aiCount = 3;
@@ -88,6 +90,108 @@ export class GameRoom {
   /** 创建客户端 */
   static client(name: string): GameRoom {
     return new GameRoom('client', name);
+  }
+
+  /** 创建互联网主机（通过中继服务器） */
+  static internetHost(name: string, serverUrl: string): GameRoom {
+    const room = new GameRoom('host', name);
+    room.myPlayerId = 0;
+    room.lobbyPlayers = [{ id: 0, name, isAI: false }];
+    room.roomCode = String(Math.floor(1000 + Math.random() * 9000));
+    room.serverUrl = serverUrl;
+    room.connectWebSocket();
+    return room;
+  }
+
+  /** 创建互联网客户端（通过中继服务器） */
+  static internetClient(name: string, serverUrl: string, roomCode: string): GameRoom {
+    const room = new GameRoom('client', name);
+    room.serverUrl = serverUrl;
+    room.roomCode = roomCode;
+    return room;
+  }
+
+  /** 连接到中继服务器 */
+  private connectWebSocket() {
+    try {
+      this.ws = new WebSocket(this.serverUrl);
+      this.ws.onopen = () => {
+        this.sendWebSocket({
+          type: 'join',
+          roomCode: this.roomCode,
+          playerId: this.myPlayerId,
+          name: this.myName,
+        });
+        if (this.mode === 'host') {
+          this.broadcastLobby();
+        }
+      };
+      this.ws.onmessage = (event: WebSocketMessageEvent) => {
+        try {
+          const msg = JSON.parse(event.data as string);
+          this.handleWebSocketMessage(msg);
+        } catch (e) {
+          // 忽略无效消息
+        }
+      };
+      this.ws.onerror = () => {
+        this.onError?.('无法连接到服务器，请检查网络');
+      };
+      this.ws.onclose = () => {
+        this.onError?.('与服务器断开连接');
+      };
+    } catch (e) {
+      this.onError?.(`连接服务器失败: ${(e as Error).message}`);
+    }
+  }
+
+  private sendWebSocket(msg: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(msg));
+    }
+  }
+
+  private handleWebSocketMessage(msg: any) {
+    if (msg.type === 'lobby') {
+      this.latestLobby = msg.lobby;
+      this.onLobby?.(msg.lobby);
+    } else if (msg.type === 'state') {
+      this.latestState = msg.state;
+      this.onState?.(msg.state);
+    } else if (msg.type === 'playerJoined') {
+      // 有新玩家加入（主机处理）
+      if (this.mode === 'host' && !this.engine) {
+        const id = this.nextPlayerId();
+        this.lobbyPlayers.push({ id, name: msg.name || `玩家${id}`, isAI: false });
+        this.broadcastLobby();
+      }
+    } else if (msg.type === 'playerLeft') {
+      // 有玩家离开
+      if (this.mode === 'host' && !this.engine) {
+        this.lobbyPlayers = this.lobbyPlayers.filter((p) => p.id !== msg.playerId);
+        this.broadcastLobby();
+      }
+    } else if (this.mode === 'host' && this.engine) {
+      // 游戏消息来自客户端
+      this.handleClientMessage({ socket: null as any, playerId: msg.playerId, name: '', isHost: false, buffer: '' }, msg);
+    }
+  }
+
+  /** 互联网客户端加入房间 */
+  joinInternet(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.sendWebSocket({
+          type: 'join',
+          roomCode: this.roomCode,
+          playerId: -1,
+          name: this.myName,
+        });
+        resolve();
+      } else {
+        reject(new Error('未连接到服务器'));
+      }
+    });
   }
 
   // ---------------- 主机 ----------------
@@ -169,6 +273,9 @@ export class GameRoom {
       myPlayerId: -1,
     };
     this.latestLobby = { ...lobby };
+    if (this.ws) {
+      this.sendWebSocket({ type: 'lobby', lobby: { ...lobby, myPlayerId: this.myPlayerId } });
+    }
     for (const c of this.clients) {
       if (c.playerId < 0) continue;
       this.send(c.socket, { type: 'lobby', lobby: { ...lobby, myPlayerId: c.playerId } });
@@ -234,6 +341,9 @@ export class GameRoom {
   }
 
   private broadcastState() {
+    if (this.ws) {
+      this.sendWebSocket({ type: 'state', state: this.buildStateFor(this.myPlayerId) });
+    }
     for (const c of this.clients) {
       if (c.playerId < 0) continue;
       this.send(c.socket, { type: 'state', state: this.buildStateFor(c.playerId) });
@@ -500,6 +610,7 @@ export class GameRoom {
   discard(tileId: number) {
     this.safe(() => {
       if (this.mode === 'host' && this.engine) this.engine.discard(this.myPlayerId, tileId);
+      else if (this.ws) this.sendWebSocket({ type: 'discard', tileId, playerId: this.myPlayerId });
       else if (this.clientSocket) this.send(this.clientSocket, { type: 'discard', tileId });
     });
   }
@@ -508,6 +619,8 @@ export class GameRoom {
     this.safe(() => {
       if (this.mode === 'host' && this.engine) {
         this.engine.respondClaim(this.myPlayerId, action, optionTiles);
+      } else if (this.ws) {
+        this.sendWebSocket({ type: 'claim', action, optionTiles, playerId: this.myPlayerId });
       } else if (this.clientSocket) {
         this.send(this.clientSocket, { type: 'claim', action, optionTiles });
       }
@@ -517,6 +630,7 @@ export class GameRoom {
   angang(tileId: number) {
     this.safe(() => {
       if (this.mode === 'host' && this.engine) this.engine.angang(this.myPlayerId, tileId);
+      else if (this.ws) this.sendWebSocket({ type: 'angang', tileId, playerId: this.myPlayerId });
       else if (this.clientSocket) this.send(this.clientSocket, { type: 'angang', tileId });
     });
   }
@@ -524,6 +638,7 @@ export class GameRoom {
   jiagang(tileId: number) {
     this.safe(() => {
       if (this.mode === 'host' && this.engine) this.engine.jiagang(this.myPlayerId, tileId);
+      else if (this.ws) this.sendWebSocket({ type: 'jiagang', tileId, playerId: this.myPlayerId });
       else if (this.clientSocket) this.send(this.clientSocket, { type: 'jiagang', tileId });
     });
   }
@@ -531,6 +646,7 @@ export class GameRoom {
   zimoHu() {
     this.safe(() => {
       if (this.mode === 'host' && this.engine) this.engine.zimoHu(this.myPlayerId);
+      else if (this.ws) this.sendWebSocket({ type: 'zimoHu', playerId: this.myPlayerId });
       else if (this.clientSocket) this.send(this.clientSocket, { type: 'zimoHu' });
     });
   }
