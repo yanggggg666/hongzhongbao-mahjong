@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, StyleSheet, Dimensions } from 'react-native';
 import { GameRoom } from '../network/room';
 import { ClientGameState, ClientPlayer } from '../network/protocol';
 import { Tile, Claim } from '../game/types';
@@ -45,34 +45,37 @@ export default function GameScreen({ room }: Props) {
 
   return (
     <View style={s.container}>
-      {/* 顶栏（固定） */}
+      {/* 顶栏 */}
       <View style={s.header}>
         <Text style={s.headerText}>第{state.roundNumber}局</Text>
         <Text style={s.headerText}>余{state.wallCount}</Text>
         <Text style={s.headerText}>{me.score}分</Text>
       </View>
 
-      {/* 主内容（可滚动） */}
+      {/* 主内容 */}
       <ScrollView style={s.scrollView} contentContainerStyle={s.scrollContent}>
         {/* 上家 */}
         {top && <PlayerArea player={top} position="top" isCurrent={state.currentPlayer === top.id} />}
 
-        {/* 中间：左家 + 中央弃牌区 + 右家 */}
+        {/* 中间行 */}
         <View style={s.middleRow}>
           {left && <PlayerArea player={left} position="left" isCurrent={state.currentPlayer === left.id} />}
+          
+          {/* 中央区域 */}
           <View style={s.centerArea}>
             {state.message ? <Text style={s.messageText}>{state.message}</Text> : null}
             <View style={s.discardPools}>
               {others.map((p) => (
                 <View key={p.id} style={s.discardPool}>
-                  {p.discards.slice(-6).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
+                  {p.discards.slice(-8).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
                 </View>
               ))}
               <View style={s.discardPool}>
-                {me.discards.slice(-6).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
+                {me.discards.slice(-8).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
               </View>
             </View>
           </View>
+
           {right && <PlayerArea player={right} position="right" isCurrent={state.currentPlayer === right.id} />}
         </View>
 
