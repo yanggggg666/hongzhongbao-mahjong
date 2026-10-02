@@ -15,12 +15,16 @@ interface Props {
   onRoom: (room: GameRoom) => void;
 }
 
+const DEFAULT_SERVER = 'wss://hongzhongbao-relay.onrender.com';
+
 export default function HomeScreen({ onRoom }: Props) {
   const [name, setName] = useState('');
   const [hosts, setHosts] = useState<HostInfo[]>([]);
   const [manualIp, setManualIp] = useState('');
-  const [tab, setTab] = useState<'none' | 'join'>('none');
+  const [tab, setTab] = useState<'none' | 'join' | 'internet'>('none');
   const [error, setError] = useState('');
+  const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER);
+  const [roomCode, setRoomCode] = useState('');
   const clientRef = useRef<GameRoom | null>(null);
 
   useEffect(() => {
@@ -57,10 +61,31 @@ export default function HomeScreen({ onRoom }: Props) {
     onRoom(room);
   };
 
+  const createInternetRoom = () => {
+    const room = GameRoom.internetHost(name.trim() || '房主', serverUrl.trim() || DEFAULT_SERVER);
+    room.onError = (m) => setError(m);
+    onRoom(room);
+  };
+
+  const joinInternetRoom = async () => {
+    if (!roomCode.trim()) {
+      setError('请输入房间号');
+      return;
+    }
+    const client = GameRoom.internetClient(name.trim() || '玩家', serverUrl.trim() || DEFAULT_SERVER, roomCode.trim());
+    client.onError = (m) => setError(m);
+    try {
+      await client.joinInternet();
+      onRoom(client);
+    } catch (e) {
+      setError('无法连接到服务器，请检查网络和房间号');
+    }
+  };
+
   return (
     <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <Text style={s.title}>红中宝麻将</Text>
-      <Text style={s.subtitle}>局域网联机 · 1-4 人 · 可加电脑</Text>
+      <Text style={s.subtitle}>局域网 / 互联网联机 · 1-4 人 · 可加电脑</Text>
 
       <TextInput
         style={s.input}
@@ -72,7 +97,7 @@ export default function HomeScreen({ onRoom }: Props) {
 
       <View style={s.row}>
         <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createRoom}>
-          <Text style={s.btnText}>创建房间（当房主）</Text>
+          <Text style={s.btnText}>创建房间（局域网）</Text>
         </TouchableOpacity>
       </View>
 
@@ -84,7 +109,16 @@ export default function HomeScreen({ onRoom }: Props) {
             if (tab !== 'join') startDiscovery();
           }}
         >
-          <Text style={s.btnText}>加入房间</Text>
+          <Text style={s.btnText}>加入房间（局域网）</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={s.row}>
+        <TouchableOpacity
+          style={[s.btn, s.btnInternet]}
+          onPress={() => setTab(tab === 'internet' ? 'none' : 'internet')}
+        >
+          <Text style={s.btnText}>互联网模式</Text>
         </TouchableOpacity>
       </View>
 
@@ -124,6 +158,37 @@ export default function HomeScreen({ onRoom }: Props) {
         </View>
       )}
 
+      {tab === 'internet' && (
+        <View style={s.discovery}>
+          <Text style={s.sectionTitle}>互联网联机（各自用流量上网）</Text>
+          <TextInput
+            style={s.input}
+            placeholder="服务器地址（默认即可）"
+            value={serverUrl}
+            onChangeText={setServerUrl}
+          />
+          <View style={s.row}>
+            <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createInternetRoom}>
+              <Text style={s.btnText}>创建互联网房间</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={s.row}>
+            <TextInput
+              style={[s.input, { flex: 1 }]}
+              placeholder="输入房间号"
+              value={roomCode}
+              onChangeText={setRoomCode}
+              keyboardType="numeric"
+              maxLength={4}
+            />
+            <TouchableOpacity style={[s.btn, s.btnSecondary, { marginLeft: 8 }]} onPress={joinInternetRoom}>
+              <Text style={s.btnText}>加入</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={s.hint}>房主创建房间后会显示房间号，其他人输入房间号即可加入</Text>
+        </View>
+      )}
+
       {error ? <Text style={s.error}>{error}</Text> : null}
     </KeyboardAvoidingView>
   );
@@ -146,6 +211,7 @@ const s = StyleSheet.create({
   btn: { flex: 1, borderRadius: 8, padding: 14, alignItems: 'center' },
   btnPrimary: { backgroundColor: '#b71c1c' },
   btnSecondary: { backgroundColor: '#2e7d32' },
+  btnInternet: { backgroundColor: '#1565c0' },
   btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
   discovery: { marginTop: 8 },
   sectionTitle: { fontSize: 14, color: '#333', marginBottom: 6 },
