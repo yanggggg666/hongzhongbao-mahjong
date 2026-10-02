@@ -71,6 +71,7 @@ export class MahjongEngine {
       p.melds = [];
       p.discards = [];
     }
+    // 136 张牌，每人 13 张
     for (let r = 0; r < 13; r++) {
       for (let i = 0; i < n; i++) {
         this.state.players[i].hand.push(this.wall.pop()!);
