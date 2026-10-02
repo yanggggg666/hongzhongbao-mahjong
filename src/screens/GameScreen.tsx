@@ -39,58 +39,60 @@ export default function GameScreen({ room }: Props) {
     else { room.claim(claim.type, claim.options?.[0]); setChiOptions(null); }
   };
 
-  // 布局：上家=others[0], 左家=others[1], 右家=others[2]
   const top = others[0];
   const left = others[1];
   const right = others[2];
 
   return (
     <View style={s.container}>
-      {/* 顶栏 */}
+      {/* 顶栏（固定） */}
       <View style={s.header}>
         <Text style={s.headerText}>第{state.roundNumber}局</Text>
         <Text style={s.headerText}>余{state.wallCount}</Text>
         <Text style={s.headerText}>{me.score}分</Text>
       </View>
 
-      {/* 上家 */}
-      {top && <PlayerArea player={top} position="top" isCurrent={state.currentPlayer === top.id} />}
+      {/* 主内容（可滚动） */}
+      <ScrollView style={s.scrollView} contentContainerStyle={s.scrollContent}>
+        {/* 上家 */}
+        {top && <PlayerArea player={top} position="top" isCurrent={state.currentPlayer === top.id} />}
 
-      {/* 中间：左家 + 中央弃牌区 + 右家 */}
-      <View style={s.middleRow}>
-        {left && <PlayerArea player={left} position="left" isCurrent={state.currentPlayer === left.id} />}
-        <View style={s.centerArea}>
-          {state.message ? <Text style={s.messageText}>{state.message}</Text> : null}
-          <View style={s.discardPools}>
-            {others.map((p) => (
-              <View key={p.id} style={s.discardPool}>
-                {p.discards.slice(-6).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
+        {/* 中间：左家 + 中央弃牌区 + 右家 */}
+        <View style={s.middleRow}>
+          {left && <PlayerArea player={left} position="left" isCurrent={state.currentPlayer === left.id} />}
+          <View style={s.centerArea}>
+            {state.message ? <Text style={s.messageText}>{state.message}</Text> : null}
+            <View style={s.discardPools}>
+              {others.map((p) => (
+                <View key={p.id} style={s.discardPool}>
+                  {p.discards.slice(-6).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
+                </View>
+              ))}
+              <View style={s.discardPool}>
+                {me.discards.slice(-6).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
               </View>
-            ))}
-            <View style={s.discardPool}>
-              {me.discards.slice(-6).map((t) => <TileView key={t.id} tile={t} size="xs" dimmed />)}
             </View>
           </View>
+          {right && <PlayerArea player={right} position="right" isCurrent={state.currentPlayer === right.id} />}
         </View>
-        {right && <PlayerArea player={right} position="right" isCurrent={state.currentPlayer === right.id} />}
-      </View>
 
-      {/* 我的区域 */}
-      <View style={s.myArea}>
-        <View style={s.myMelds}>
-          {me.melds.map((m, i) => (
-            <View key={i} style={s.meldGroup}>{m.tiles.map((t) => <TileView key={t.id} tile={t} size="sm" />)}</View>
-          ))}
+        {/* 我的区域 */}
+        <View style={s.myArea}>
+          <View style={s.myMelds}>
+            {me.melds.map((m, i) => (
+              <View key={i} style={s.meldGroup}>{m.tiles.map((t) => <TileView key={t.id} tile={t} size="sm" />)}</View>
+            ))}
+          </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.handRow}>
+            {(me.hand ?? []).map((t) => (
+              <TileView key={t.id} tile={t} size="lg" selected={selected === t.id}
+                highlighted={state.lastDraw?.id === t.id} onPress={isMyTurn ? () => onTilePress(t) : undefined} />
+            ))}
+          </ScrollView>
         </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.handRow}>
-          {(me.hand ?? []).map((t) => (
-            <TileView key={t.id} tile={t} size="lg" selected={selected === t.id}
-              highlighted={state.lastDraw?.id === t.id} onPress={isMyTurn ? () => onTilePress(t) : undefined} />
-          ))}
-        </ScrollView>
-      </View>
+      </ScrollView>
 
-      {/* 操作按钮 */}
+      {/* 操作按钮（固定底部） */}
       <View style={s.actionBar}>
         {state.canZimo && isMyTurn && <TouchableOpacity style={[s.actionBtn, s.huBtn]} onPress={() => room.zimoHu()}><Text style={s.actionText}>自摸</Text></TouchableOpacity>}
         {angangTiles.map((t) => <TouchableOpacity key={t.id} style={[s.actionBtn, s.gangBtn]} onPress={() => room.angang(t.id)}><Text style={s.actionText}>暗杠</Text></TouchableOpacity>)}
@@ -164,7 +166,9 @@ const s = StyleSheet.create({
   text: { color: '#fff', textAlign: 'center', marginTop: 40 },
   header: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 4, backgroundColor: '#1b5e20' },
   headerText: { color: '#fff', fontSize: 12 },
-  middleRow: { flex: 1, flexDirection: 'row' },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 8 },
+  middleRow: { flexDirection: 'row' },
   centerArea: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#2e7d32', margin: 4, borderRadius: 8 },
   messageText: { color: '#ffd54f', fontSize: 12, marginBottom: 4 },
   discardPools: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' },
