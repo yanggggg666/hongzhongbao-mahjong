@@ -1,4 +1,4 @@
-export type Suit = 'wan' | 'tiao' | 'tong' | 'hongzhong';
+export type Suit = 'wan' | 'tiao' | 'tong' | 'feng' | 'jian' | 'hongzhong';
 
 export interface Tile {
   id: number; // 0-111 唯一编号
