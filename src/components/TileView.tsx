@@ -12,46 +12,56 @@ const SUIT_COLOR: Record<string, string> = {
 
 interface Props {
   tile: Tile;
-  size?: 'small' | 'normal' | 'large';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   selected?: boolean;
   highlighted?: boolean;
   onPress?: () => void;
+  dimmed?: boolean;
 }
 
-export function TileView({ tile, size = 'normal', selected, highlighted, onPress }: Props) {
-  const dims =
-    size === 'small'
-      ? { w: 22, h: 30, fs: 11 }
-      : size === 'large'
-        ? { w: 44, h: 60, fs: 20 }
-        : { w: 32, h: 44, fs: 15 };
+export function TileView({ tile, size = 'md', selected, highlighted, onPress, dimmed }: Props) {
+  const dims = {
+    xs: { w: 18, h: 26, fs: 9 },
+    sm: { w: 24, h: 34, fs: 12 },
+    md: { w: 34, h: 48, fs: 17 },
+    lg: { w: 42, h: 58, fs: 21 },
+  }[size];
+
   const color = SUIT_COLOR[tile.suit];
+  const isRed = tile.suit === 'hongzhong';
+
   return (
     <TouchableOpacity
-      activeOpacity={onPress ? 0.6 : 1}
+      activeOpacity={onPress ? 0.5 : 1}
       onPress={onPress}
       style={[
         styles.tile,
         {
           width: dims.w,
           height: dims.h,
-          backgroundColor: selected ? '#fff9c4' : highlighted ? '#ffe0b2' : '#ffffff',
+          backgroundColor: selected ? '#fff9c4' : highlighted ? '#ffe0b2' : dimmed ? '#e0e0e0' : '#ffffff',
           borderColor: selected ? '#f9a825' : highlighted ? '#ef6c00' : '#bdbdbd',
           borderWidth: selected || highlighted ? 2 : 1,
           margin: 1,
+          opacity: dimmed ? 0.6 : 1,
         },
       ]}
     >
-      <Text style={[styles.label, { color, fontSize: dims.fs, fontWeight: tile.suit === 'hongzhong' ? 'bold' : 'normal' }]}>
+      <Text
+        style={[
+          styles.label,
+          { color, fontSize: dims.fs, fontWeight: isRed ? 'bold' : 'normal' },
+        ]}
+      >
         {tileLabel(tile)}
       </Text>
     </TouchableOpacity>
   );
 }
 
-/** 背面朝上的牌（表示他人手牌数） */
-export function FaceDownTile() {
-  return <View style={[styles.tile, styles.faceDown, { width: 14, height: 20, margin: 1 }]} />;
+export function FaceDownTile({ size = 'sm' }: { size?: 'xs' | 'sm' | 'md' }) {
+  const dims = { xs: { w: 12, h: 18 }, sm: { w: 16, h: 24 }, md: { w: 20, h: 30 } }[size];
+  return <View style={[styles.tile, styles.faceDown, { width: dims.w, height: dims.h, margin: 1 }]} />;
 }
 
 const styles = StyleSheet.create({
