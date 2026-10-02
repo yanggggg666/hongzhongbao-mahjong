@@ -20,6 +20,7 @@ export interface HostInfo {
   name: string;
   ip: string;
   port: number;
+  roomCode?: string;
 }
 
 interface ClientConn {
@@ -49,6 +50,8 @@ export class GameRoom {
   myPlayerId = -1;
   /** 我的名字 */
   myName: string;
+  /** 房间号（主机创建房间时生成） */
+  roomCode = '';
 
   onState: ((state: ClientGameState) => void) | null = null;
   onLobby: ((lobby: LobbyState) => void) | null = null;
@@ -77,6 +80,7 @@ export class GameRoom {
     const room = new GameRoom('host', name);
     room.myPlayerId = 0;
     room.lobbyPlayers = [{ id: 0, name, isAI: false }];
+    room.roomCode = String(Math.floor(1000 + Math.random() * 9000));
     room.startServer();
     return room;
   }
@@ -104,6 +108,7 @@ export class GameRoom {
     });
     this.server.on('error', (e: any) => this.onError?.(`服务器错误: ${e.message}`));
     this.server.listen({ port: TCP_PORT, host: '0.0.0.0' }, () => {
+      this.broadcastLobby();
       this.startDiscoveryBroadcast();
     });
   }
@@ -117,7 +122,7 @@ export class GameRoom {
         if (this.destroyed) return;
         try {
           const msg = Buffer.from(
-            JSON.stringify({ magic: DISCOVERY_MAGIC, name: this.myName, port: TCP_PORT })
+            JSON.stringify({ magic: DISCOVERY_MAGIC, name: this.myName, port: TCP_PORT, roomCode: this.roomCode })
           );
           this.udp.setBroadcast?.(true);
           this.udp.send(msg, 0, msg.length, UDP_PORT, '255.255.255.255');
@@ -328,7 +333,7 @@ export class GameRoom {
           if (data.magic === DISCOVERY_MAGIC) {
             const key = `${rinfo.address}:${data.port}`;
             this.hosts.set(key, {
-              info: { name: data.name, ip: rinfo.address, port: data.port },
+              info: { name: data.name, ip: rinfo.address, port: data.port, roomCode: data.roomCode || '' },
               lastSeen: Date.now(),
             });
             this.pushHosts();
@@ -362,6 +367,11 @@ export class GameRoom {
   /** 是否正在监听局域网主机广播 */
   get discovering(): boolean {
     return !!this.udp;
+  }
+
+  /** 获取房间号（仅主机模式） */
+  getRoomCode(): string {
+    return this.roomCode;
   }
 
   stopDiscovery() {
