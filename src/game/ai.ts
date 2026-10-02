@@ -1,36 +1,65 @@
 import { Tile, Meld, Claim } from './types';
 import { tileType, HONGZHONG_TYPE } from './tiles';
 import { handCounts } from './rules';
+import { calculateBestShanten } from './shanten';
 import { ClaimAction } from './engine';
 
-/** 评估手牌中每张牌的利用价值，越低越应该打出 */
-function tileUsefulness(hand: Tile[], tile: Tile): number {
-  if (tile.suit === 'hongzhong') return 1000; // 红中是万能牌，必留
+/** 计算打出某张牌后的向听数 */
+function shantenAfterDiscard(hand: Tile[], tile: Tile, melds: number): number {
+  const counts = handCounts(hand);
+  counts[tileType(tile)]--;
+  return calculateBestShanten(counts, melds);
+}
+
+/** AI 选择要打出的牌：选择使向听数最小的打法 */
+export function aiChooseDiscard(hand: Tile[]): number {
+  const melds = 0; // 手牌中的面子数需要外部传入，这里简化
+  let bestId = hand[0].id;
+  let bestShanten = Infinity;
+
+  // 评估每张牌
+  const evaluated = new Map<number, number>();
+  for (const tile of hand) {
+    const s = shantenAfterDiscard(hand, tile, melds);
+    evaluated.set(tile.id, s);
+    if (s < bestShanten) {
+      bestShanten = s;
+      bestId = tile.id;
+    }
+  }
+
+  // 如果有多张牌向听数相同，选择"价值"最低的（孤张优先打）
+  const candidates = hand.filter((t) => evaluated.get(t.id) === bestShanten);
+  if (candidates.length > 1) {
+    let worst = candidates[0];
+    let worstScore = -Infinity;
+    for (const t of candidates) {
+      const score = tileIsolationScore(hand, t);
+      if (score > worstScore) {
+        worstScore = score;
+        worst = t;
+      }
+    }
+    return worst.id;
+  }
+  return bestId;
+}
+
+/** 评估一张牌的"孤立程度"（越高越应该打掉） */
+function tileIsolationScore(hand: Tile[], tile: Tile): number {
+  if (tile.suit === 'hongzhong') return -100; // 红中必留
   const t = tileType(tile);
   const rank = t % 9;
   const counts = handCounts(hand);
   let score = 0;
-  score += counts[t] * 15; // 相同牌
-  if (rank > 0) score += counts[t - 1] * 6; // 相邻
-  if (rank < 8) score += counts[t + 1] * 6;
-  if (rank > 1) score += counts[t - 2] * 3; // 隔一张
-  if (rank < 7) score += counts[t + 2] * 3;
-  if (counts[t] >= 2) score += 10; // 对子加成
+  // 孤张加分
+  if (counts[t] === 1) score += 10;
+  // 远离其他牌加分
+  if (rank > 0 && counts[t - 1] === 0) score += 3;
+  if (rank < 8 && counts[t + 1] === 0) score += 3;
+  if (rank > 1 && counts[t - 2] === 0) score += 2;
+  if (rank < 7 && counts[t + 2] === 0) score += 2;
   return score;
-}
-
-/** AI 选择要打出的牌 */
-export function aiChooseDiscard(hand: Tile[]): number {
-  let bestId = hand[0].id;
-  let bestScore = Infinity;
-  for (const tile of hand) {
-    const score = tileUsefulness(hand, tile);
-    if (score < bestScore) {
-      bestScore = score;
-      bestId = tile.id;
-    }
-  }
-  return bestId;
 }
 
 /** AI 决定是否吃/碰/杠/胡 */
@@ -41,24 +70,39 @@ export function aiChooseClaim(
 ): { action: ClaimAction; optionTiles?: Tile[] } {
   if (claim.type === 'hu') return { action: 'hu' };
   if (claim.type === 'gang') return { action: 'gang' };
+
+  const meldCount = melds.length;
+  const currentShanten = calculateBestShanten(handCounts(hand), meldCount);
+
   if (claim.type === 'peng') {
-    // 碰一般不亏；手牌接近七对时保留灵活性
-    if (melds.length >= 3 && Math.random() < 0.3) return { action: 'pass' };
-    return { action: 'peng' };
-  }
-  if (claim.type === 'chi') {
-    // 牌数少、面子少时才吃，否则保持门清
-    if (melds.length <= 1 && claim.options && claim.options.length > 0) {
-      return { action: 'chi', optionTiles: claim.options[0] };
-    }
+    // 碰后向听数不变差才碰
+    const tile = claim.tiles[0];
+    const counts = handCounts(hand);
+    counts[tileType(tile)] -= 2;
+    const afterShanten = calculateBestShanten(counts, meldCount + 1);
+    if (afterShanten <= currentShanten) return { action: 'peng' };
     return { action: 'pass' };
   }
-  return { action: 'pass' };
-}
 
-/** AI 是否暗杠/补杠：默认总是杠（可多摸一张牌） */
-export function aiWantKong(): boolean {
-  return true;
+  if (claim.type === 'chi') {
+    // 吃后向听数变好才吃
+    if (!claim.options || claim.options.length === 0) return { action: 'pass' };
+    let bestOption = claim.options[0];
+    let bestShanten = currentShanten;
+    for (const opt of claim.options) {
+      const counts = handCounts(hand);
+      for (const t of opt) counts[tileType(t)]--;
+      const s = calculateBestShanten(counts, meldCount + 1);
+      if (s < bestShanten) {
+        bestShanten = s;
+        bestOption = opt;
+      }
+    }
+    if (bestShanten < currentShanten) return { action: 'chi', optionTiles: bestOption };
+    return { action: 'pass' };
+  }
+
+  return { action: 'pass' };
 }
 
 /** 供 UI 提示：手牌中可暗杠的牌 */
