@@ -7,6 +7,8 @@ const SUIT_COLOR: Record<string, string> = {
   wan: '#c62828',
   tiao: '#2e7d32',
   tong: '#1565c0',
+  feng: '#212121',
+  jian: '#6a1b9a',
   hongzhong: '#b71c1c',
 };
 
