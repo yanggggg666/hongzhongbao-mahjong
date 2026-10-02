@@ -1,19 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  FlatList,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, ScrollView } from 'react-native';
 import { GameRoom, HostInfo } from '../network/room';
 
-interface Props {
-  onRoom: (room: GameRoom) => void;
-}
+interface Props { onRoom: (room: GameRoom) => void; }
 
 const DEFAULT_SERVER = 'wss://hongzhongbao-relay.onrender.com';
 
@@ -27,11 +16,7 @@ export default function HomeScreen({ onRoom }: Props) {
   const [roomCode, setRoomCode] = useState('');
   const clientRef = useRef<GameRoom | null>(null);
 
-  useEffect(() => {
-    return () => {
-      clientRef.current?.destroy();
-    };
-  }, []);
+  useEffect(() => () => { clientRef.current?.destroy(); }, []);
 
   const startDiscovery = () => {
     const client = GameRoom.client(name.trim() || '玩家');
@@ -47,12 +32,8 @@ export default function HomeScreen({ onRoom }: Props) {
     client.onHosts = (h) => setHosts(h);
     client.onError = (m) => setError(m);
     if (!client.discovering) client.startDiscovery();
-    try {
-      await client.join(ip.trim());
-      onRoom(client);
-    } catch (e) {
-      setError('无法连接到该主机，请确认网络');
-    }
+    try { await client.join(ip.trim()); onRoom(client); }
+    catch (e) { setError('无法连接到该主机，请确认网络'); }
   };
 
   const createRoom = () => {
@@ -68,87 +49,44 @@ export default function HomeScreen({ onRoom }: Props) {
   };
 
   const joinInternetRoom = async () => {
-    if (!roomCode.trim()) {
-      setError('请输入房间号');
-      return;
-    }
+    if (!roomCode.trim()) { setError('请输入房间号'); return; }
     const client = GameRoom.internetClient(name.trim() || '玩家', serverUrl.trim() || DEFAULT_SERVER, roomCode.trim());
     client.onError = (m) => setError(m);
-    try {
-      await client.joinInternet();
-      onRoom(client);
-    } catch (e) {
-      setError('无法连接到服务器，请检查网络和房间号');
-    }
+    try { await client.joinInternet(); onRoom(client); }
+    catch (e) { setError('无法连接到服务器，请检查网络和房间号'); }
   };
 
   return (
-    <KeyboardAvoidingView style={s.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <View style={s.header}>
-        <Text style={s.title}>红中宝麻将</Text>
-        <Text style={s.subtitle}>局域网 / 互联网联机 · 1-4 人 · 可加电脑</Text>
-      </View>
+    <ScrollView style={s.container} contentContainerStyle={s.content}>
+      <Text style={s.title}>红中宝麻将</Text>
+      <Text style={s.subtitle}>局域网 / 互联网联机 · 1-4 人 · 可加电脑</Text>
 
-      <TextInput
-        style={s.input}
-        placeholder="输入你的昵称"
-        value={name}
-        onChangeText={setName}
-        maxLength={12}
-      />
+      <TextInput style={s.input} placeholder="输入你的昵称" value={name} onChangeText={setName} maxLength={12} />
 
-      <View style={s.btnGroup}>
-        <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createRoom}>
-          <Text style={s.btnText}>创建房间（局域网）</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createRoom}>
+        <Text style={s.btnText}>创建房间（局域网）</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[s.btn, s.btnSecondary]}
-          onPress={() => {
-            setTab(tab === 'join' ? 'none' : 'join');
-            if (tab !== 'join') startDiscovery();
-          }}
-        >
-          <Text style={s.btnText}>加入房间（局域网）</Text>
-        </TouchableOpacity>
+      <TouchableOpacity style={[s.btn, s.btnSecondary]} onPress={() => { setTab(tab === 'join' ? 'none' : 'join'); if (tab !== 'join') startDiscovery(); }}>
+        <Text style={s.btnText}>加入房间（局域网）</Text>
+      </TouchableOpacity>
 
-        <TouchableOpacity
-          style={[s.btn, s.btnInternet]}
-          onPress={() => setTab(tab === 'internet' ? 'none' : 'internet')}
-        >
-          <Text style={s.btnText}>互联网模式</Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity style={[s.btn, s.btnInternet]} onPress={() => setTab(tab === 'internet' ? 'none' : 'internet')}>
+        <Text style={s.btnText}>互联网模式</Text>
+      </TouchableOpacity>
 
       {tab === 'join' && (
-        <View style={s.discovery}>
+        <View style={s.section}>
           <Text style={s.sectionTitle}>发现的房间：</Text>
-          {hosts.length === 0 && <Text style={s.hint}>正在搜索局域网内的房间…</Text>}
-          <FlatList
-            data={hosts}
-            keyExtractor={(h) => h.ip}
-            renderItem={({ item }) => (
-              <TouchableOpacity style={s.hostItem} onPress={() => join(item.ip)}>
-                <View style={s.hostInfo}>
-                  <Text style={s.hostName}>{item.name} 的房间</Text>
-                  {item.roomCode ? (
-                    <Text style={s.roomCode}>房间号：{item.roomCode}</Text>
-                  ) : (
-                    <Text style={s.hostIp}>{item.ip}</Text>
-                  )}
-                </View>
-                <Text style={s.joinBtn}>加入</Text>
-              </TouchableOpacity>
-            )}
-          />
+          {hosts.length === 0 && <Text style={s.hint}>正在搜索…</Text>}
+          {hosts.map((h) => (
+            <TouchableOpacity key={h.ip} style={s.hostItem} onPress={() => join(h.ip)}>
+              <Text style={s.hostName}>{h.name} 的房间 {h.roomCode ? `· ${h.roomCode}` : ''}</Text>
+              <Text style={s.joinBtn}>加入</Text>
+            </TouchableOpacity>
+          ))}
           <View style={s.row}>
-            <TextInput
-              style={[s.input, { flex: 1 }]}
-              placeholder="手动输入主机 IP"
-              value={manualIp}
-              onChangeText={setManualIp}
-              keyboardType="numeric"
-            />
+            <TextInput style={[s.input, { flex: 1 }]} placeholder="手动输入主机 IP" value={manualIp} onChangeText={setManualIp} keyboardType="numeric" />
             <TouchableOpacity style={[s.btn, s.btnPrimary, { marginLeft: 8 }]} onPress={() => join(manualIp)}>
               <Text style={s.btnText}>连接</Text>
             </TouchableOpacity>
@@ -157,80 +95,43 @@ export default function HomeScreen({ onRoom }: Props) {
       )}
 
       {tab === 'internet' && (
-        <View style={s.discovery}>
+        <View style={s.section}>
           <Text style={s.sectionTitle}>互联网联机（各自用流量上网）</Text>
-          <TextInput
-            style={s.input}
-            placeholder="服务器地址（默认即可）"
-            value={serverUrl}
-            onChangeText={setServerUrl}
-          />
+          <TextInput style={s.input} placeholder="服务器地址（默认即可）" value={serverUrl} onChangeText={setServerUrl} />
+          <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createInternetRoom}>
+            <Text style={s.btnText}>创建互联网房间</Text>
+          </TouchableOpacity>
           <View style={s.row}>
-            <TouchableOpacity style={[s.btn, s.btnPrimary]} onPress={createInternetRoom}>
-              <Text style={s.btnText}>创建互联网房间</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={s.row}>
-            <TextInput
-              style={[s.input, { flex: 1 }]}
-              placeholder="输入房间号"
-              value={roomCode}
-              onChangeText={setRoomCode}
-              keyboardType="numeric"
-              maxLength={4}
-            />
+            <TextInput style={[s.input, { flex: 1 }]} placeholder="输入房间号" value={roomCode} onChangeText={setRoomCode} keyboardType="numeric" maxLength={4} />
             <TouchableOpacity style={[s.btn, s.btnSecondary, { marginLeft: 8 }]} onPress={joinInternetRoom}>
               <Text style={s.btnText}>加入</Text>
             </TouchableOpacity>
           </View>
-          <Text style={s.hint}>房主创建房间后会显示房间号，其他人输入房间号即可加入</Text>
         </View>
       )}
 
       {error ? <Text style={s.error}>{error}</Text> : null}
-    </KeyboardAvoidingView>
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, padding: 24, backgroundColor: '#f5f5f0' },
-  header: { alignItems: 'center', marginBottom: 28 },
-  title: { fontSize: 36, fontWeight: 'bold', color: '#b71c1c', marginBottom: 4 },
-  subtitle: { fontSize: 14, color: '#666' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 16,
-    backgroundColor: '#fff',
-    marginBottom: 12,
-  },
-  btnGroup: { gap: 10 },
-  row: { flexDirection: 'row', marginBottom: 12 },
-  btn: { borderRadius: 8, padding: 14, alignItems: 'center' },
+  container: { flex: 1, backgroundColor: '#f5f5f0' },
+  content: { padding: 16, alignItems: 'center' },
+  title: { fontSize: 28, fontWeight: 'bold', color: '#b71c1c' },
+  subtitle: { fontSize: 12, color: '#666', marginBottom: 12 },
+  input: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, fontSize: 14, backgroundColor: '#fff', marginBottom: 8, width: '100%', maxWidth: 400 },
+  btn: { borderRadius: 8, padding: 12, alignItems: 'center', marginBottom: 8, width: '100%', maxWidth: 400 },
   btnPrimary: { backgroundColor: '#b71c1c' },
   btnSecondary: { backgroundColor: '#2e7d32' },
   btnInternet: { backgroundColor: '#1565c0' },
-  btnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
-  discovery: { marginTop: 8 },
-  sectionTitle: { fontSize: 14, color: '#333', marginBottom: 6 },
-  hint: { color: '#999', fontSize: 13, marginBottom: 8 },
-  hostItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 6,
-    borderWidth: 1,
-    borderColor: '#ddd',
-  },
-  hostInfo: { flex: 1 },
-  hostName: { fontSize: 15, fontWeight: 'bold' },
-  roomCode: { fontSize: 13, color: '#b71c1c', fontWeight: 'bold', marginTop: 2 },
-  hostIp: { fontSize: 12, color: '#777', marginTop: 2 },
-  joinBtn: { color: '#2e7d32', fontSize: 15, fontWeight: 'bold', marginLeft: 8 },
-  error: { color: '#d32f2f', marginTop: 12, textAlign: 'center' },
+  btnText: { color: '#fff', fontSize: 14, fontWeight: 'bold' },
+  section: { width: '100%', maxWidth: 400, marginTop: 8 },
+  sectionTitle: { fontSize: 13, color: '#333', marginBottom: 4 },
+  hint: { color: '#999', fontSize: 12, marginBottom: 4 },
+  hostItem: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#fff', padding: 10, borderRadius: 8, marginBottom: 4, borderWidth: 1, borderColor: '#ddd' },
+  hostName: { fontSize: 14, fontWeight: 'bold' },
+  joinBtn: { color: '#2e7d32', fontSize: 14, fontWeight: 'bold' },
+  row: { flexDirection: 'row', alignItems: 'center' },
+  error: { color: '#d32f2f', marginTop: 8, textAlign: 'center' },
 });
