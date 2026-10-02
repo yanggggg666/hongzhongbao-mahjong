@@ -3,18 +3,23 @@
     "name": "红中宝麻将",
     "slug": "hongzhongbao-mahjong",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "landscape",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
     "ios": {
       "bundleIdentifier": "com.hongzhongbao.mahjong",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "用于在局域网内发现好友并联机游戏",
-        "NSBonjourServices": ["_hongzhongbao._tcp"]
+        "NSBonjourServices": ["_hongzhongbao._tcp"],
+        "UISupportedInterfaceOrientations": [
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
       }
     },
     "android": {
       "package": "com.hongzhongbao.mahjong",
+      "screenOrientation": "landscape",
       "permissions": [
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE",
