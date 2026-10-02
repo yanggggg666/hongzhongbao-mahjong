@@ -34,10 +34,18 @@ export default function LobbyScreen({ room, onLeave }: Props) {
   const total = humans + aiCount;
   const canStart = total >= 2 && total <= 4;
   const isHost = lobby.myPlayerId === lobby.hostId;
+  const roomCode = room.getRoomCode();
 
   return (
     <View style={s.container}>
       <Text style={s.title}>游戏大厅</Text>
+      {isHost && roomCode ? (
+        <View style={s.codeBox}>
+          <Text style={s.codeLabel}>房间号</Text>
+          <Text style={s.codeValue}>{roomCode}</Text>
+          <Text style={s.codeHint}>告诉好友此房间号，他们即可加入</Text>
+        </View>
+      ) : null}
       <Text style={s.text}>
         已加入 {humans} 人{total < 4 ? `，还可加入 ${4 - humans} 人` : '（已满）'}
       </Text>
@@ -135,6 +143,18 @@ const s = StyleSheet.create({
   btnDisabled: { backgroundColor: '#999' },
   btnText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
   waiting: { textAlign: 'center', color: '#777', fontSize: 15, marginBottom: 12 },
+  codeBox: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: '#b71c1c',
+  },
+  codeLabel: { fontSize: 13, color: '#666' },
+  codeValue: { fontSize: 42, fontWeight: 'bold', color: '#b71c1c', letterSpacing: 8, marginVertical: 4 },
+  codeHint: { fontSize: 12, color: '#999' },
   leaveBtn: { alignItems: 'center', padding: 10 },
   leaveText: { color: '#999' },
 });
