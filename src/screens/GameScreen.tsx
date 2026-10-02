@@ -66,7 +66,7 @@ export default function GameScreen({ room }: Props) {
   const onTilePress = (tile: Tile) => {
     if (!isMyTurn) return;
     if (selected === tile.id) {
-      room.discard(tile.id); // 再点一次打出
+      room.discard(tile.id);
     } else {
       setSelected(tile.id);
     }
@@ -87,15 +87,15 @@ export default function GameScreen({ room }: Props) {
 
   return (
     <View style={s.container}>
-      {/* 顶栏 */}
+      {/* 顶栏：局数、剩余牌数、分数 */}
       <View style={s.header}>
-        <Text style={s.headerText}>第 {state.roundNumber} 局</Text>
-        <Text style={s.headerText}>剩余 {state.wallCount} 张</Text>
-        <Text style={s.headerText}>分数 {me.score}</Text>
+        <Text style={s.headerText}>第{state.roundNumber}局</Text>
+        <Text style={s.headerText}>余{state.wallCount}</Text>
+        <Text style={s.headerText}>{me.score}分</Text>
       </View>
 
-      {/* 其他玩家 */}
-      <View style={s.opponents}>
+      {/* 对家（上方） */}
+      <View style={s.opponentArea}>
         {others.map((p) => (
           <OpponentCard key={p.id} player={p} isCurrent={state.currentPlayer === p.id} />
         ))}
@@ -108,26 +108,19 @@ export default function GameScreen({ room }: Props) {
         </View>
       ) : null}
 
-      {/* 我的副露与弃牌 */}
-      <View style={s.myArea}>
-        <View style={s.meldRow}>
-          {me.melds.length === 0 ? (
-            <Text style={s.dimText}>（无副露）</Text>
-          ) : (
-            me.melds.map((m, i) => (
-              <View key={i} style={s.meldGroup}>
-                {m.tiles.map((t) => (
-                  <TileView key={t.id} tile={t} size="small" />
-                ))}
-              </View>
-            ))
-          )}
-        </View>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.discardRow}>
-          {me.discards.map((t) => (
-            <TileView key={t.id} tile={t} size="small" />
-          ))}
-        </ScrollView>
+      {/* 我的副露 */}
+      <View style={s.myMelds}>
+        {me.melds.length > 0 ? (
+          me.melds.map((m, i) => (
+            <View key={i} style={s.meldGroup}>
+              {m.tiles.map((t) => (
+                <TileView key={t.id} tile={t} size="sm" />
+              ))}
+            </View>
+          ))
+        ) : (
+          <Text style={s.dimText}>（无副露）</Text>
+        )}
       </View>
 
       {/* 我的手牌 */}
@@ -136,10 +129,18 @@ export default function GameScreen({ room }: Props) {
           <TileView
             key={t.id}
             tile={t}
+            size="lg"
             selected={selected === t.id}
             highlighted={state.lastDraw?.id === t.id}
             onPress={isMyTurn ? () => onTilePress(t) : undefined}
           />
+        ))}
+      </ScrollView>
+
+      {/* 我的弃牌 */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.discardRow}>
+        {me.discards.map((t) => (
+          <TileView key={t.id} tile={t} size="sm" dimmed />
         ))}
       </ScrollView>
 
@@ -210,7 +211,7 @@ export default function GameScreen({ room }: Props) {
                   onPress={() => doClaim({ type: 'chi', player: -1, tiles: opt }, opt)}
                 >
                   {opt.map((t) => (
-                    <TileView key={t.id} tile={t} size="small" />
+                    <TileView key={t.id} tile={t} size="sm" />
                   ))}
                 </TouchableOpacity>
               ))}
@@ -276,21 +277,21 @@ function OpponentCard({ player, isCurrent }: { player: ClientPlayer; isCurrent: 
       </View>
       <View style={s.handCountRow}>
         {Array.from({ length: player.handCount }).map((_, i) => (
-          <FaceDownTile key={i} />
+          <FaceDownTile key={i} size="xs" />
         ))}
       </View>
       <View style={s.meldRow}>
         {player.melds.map((m, i) => (
           <View key={i} style={s.meldGroup}>
             {m.tiles.map((t) => (
-              <TileView key={t.id} tile={t} size="small" />
+              <TileView key={t.id} tile={t} size="xs" />
             ))}
           </View>
         ))}
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.discardRow}>
         {player.discards.map((t) => (
-          <TileView key={t.id} tile={t} size="small" />
+          <TileView key={t.id} tile={t} size="xs" dimmed />
         ))}
       </ScrollView>
     </View>
@@ -308,7 +309,7 @@ const s = StyleSheet.create({
     backgroundColor: '#1b5e20',
   },
   headerText: { color: '#fff', fontSize: 13 },
-  opponents: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 4 },
+  opponentArea: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 4 },
   opponentCard: {
     width: '48%',
     margin: '1%',
@@ -330,9 +331,17 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   messageText: { color: '#ffd54f', fontSize: 13 },
-  myArea: { backgroundColor: '#f5f5f0', paddingHorizontal: 6, paddingTop: 4 },
+  myMelds: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    backgroundColor: '#f5f5f0',
+    paddingHorizontal: 6,
+    paddingTop: 4,
+    minHeight: 38,
+    alignItems: 'center',
+  },
   dimText: { fontSize: 11, color: '#999' },
-  handRow: { maxHeight: 52, backgroundColor: '#f5f5f0', paddingHorizontal: 6, paddingBottom: 4 },
+  handRow: { maxHeight: 62, backgroundColor: '#f5f5f0', paddingHorizontal: 6, paddingBottom: 4 },
   actionBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
